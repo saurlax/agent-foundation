@@ -26,7 +26,7 @@ from a13n_harness.providers.environment.remote_envd.pairing import (
     credential_digest,
 )
 from a13n_logging import get_logger
-from anyio import CancelScope, Event, create_task_group, fail_after, move_on_after, sleep
+from anyio import CancelScope, Event, Lock, create_task_group, fail_after, move_on_after, sleep, to_thread
 from anyio.abc import TaskStatus
 from fastapi import FastAPI, Query, Request, WebSocket
 from fastapi.exceptions import RequestValidationError
@@ -38,6 +38,14 @@ from starlette.websockets import WebSocketDisconnect
 
 from a13n_harness_ui import __version__
 from a13n_harness_ui.app import AppState, AppStatus, HarnessUiApp
+from a13n_harness_ui.browser import (
+    BrowserDOM,
+    BrowserFrame,
+    BrowserInput,
+    BrowserNavigation,
+    BrowserPresentation,
+    BrowserState,
+)
 from a13n_harness_ui.configuration import ResourceMutationRequest
 from a13n_harness_ui.configuration.setup import SetupPreview, SetupPublication, SetupSelection
 from a13n_harness_ui.configuration.views import (
@@ -187,6 +195,7 @@ class ListenerFeatures(SurfaceModel):
     host_files: bool = False
     host_git: bool = False
     host_terminal: bool = False
+    browser: bool = False
 
 
 class ListenerStatus(SurfaceModel):
@@ -503,18 +512,30 @@ def create_webui(
     sandbox_error: str | None = None
     stopping = stopping if stopping is not None else Event()
     file_transfers = FileTransfers()
+    sandbox_lock = Lock()
+    sandbox_resources: AsyncExitStack | None = None
+    apps_enabled = False
+
+    async def browser_viewer_html() -> str | None:
+        viewer = static_root / "browser-viewer.html"
+        return await to_thread.run_sync(lambda: viewer.read_text(encoding="utf-8")) if viewer.is_file() else None
 
     @asynccontextmanager
     async def lifespan(_server: FastAPI) -> AsyncIterator[None]:
-        nonlocal owner, allowed_origins, sandbox_url, sandbox_error
+        nonlocal owner, allowed_origins, sandbox_url, sandbox_error, sandbox_resources, apps_enabled
         async with app_factory() as opened, AsyncExitStack() as resources:
+            sandbox_resources = resources
             source = await opened.current_configuration()
-            if source is not None and source.document.webui.mcp_apps.enabled:
+            apps_enabled = source is not None and source.document.webui.mcp_apps.enabled
+            if source is not None and (source.document.webui.mcp_apps.enabled or opened.browser_available):
                 sandbox = source.document.webui.mcp_apps.sandbox
-                if not ipaddress.ip_address(host).is_loopback and sandbox.public_url is None:
+                if not ipaddress.ip_address(host).is_loopback and sandbox.public_url is None and apps_enabled:
                     raise ValueError("Non-loopback WebUI requires an explicit MCP Apps sandbox public_url.")
                 try:
-                    sandbox_url = await resources.enter_async_context(serve_sandbox(sandbox))
+                    if ipaddress.ip_address(host).is_loopback or sandbox.public_url is not None:
+                        sandbox_url = await resources.enter_async_context(
+                            serve_sandbox(sandbox, browser_viewer=await browser_viewer_html())
+                        )
                 except OSError:
                     sandbox_error = "The MCP Apps sandbox could not start. Check its bind address and port, then restart WebUI. The original tool result remains available."
                     get_logger(__name__).warning(sandbox_error)
@@ -527,6 +548,8 @@ def create_webui(
                 allowed_origins = frozenset()
                 sandbox_url = None
                 sandbox_error = None
+                sandbox_resources = None
+                apps_enabled = False
 
     def app() -> HarnessUiApp:
         if owner is None:
@@ -645,6 +668,7 @@ def create_webui(
                 host_files=app().shares_computer,
                 host_git=app().host_git_available,
                 host_terminal=app().host_terminal_available,
+                browser=app().browser_available,
             ),
             host=host,
             access="api_key" if api_key is not None else "dangerous_bypass",
@@ -807,13 +831,97 @@ def create_webui(
     async def open_mcp_app(thread_id: str, request: Request) -> AppPresentation:
         if sandbox_error is not None:
             raise HarnessUiError(sandbox_error, code="mcp_apps_sandbox_unavailable")
-        if sandbox_url is None:
+        if sandbox_url is None or not apps_enabled:
             raise HarnessUiError("MCP Apps sandbox is disabled. Enable it and restart WebUI.", code="mcp_apps_disabled")
         sandbox_origin = origin(sandbox_url.removesuffix("/sandbox.html"))
         if sandbox_origin == origin(str(request.base_url)):
             raise HarnessUiError("MCP Apps require a separate sandbox origin.", code="mcp_apps_origin_invalid")
         result = await app().open_mcp_app(thread_id, await _document(request, AppReference))
         return result.model_copy(update={"sandbox_url": sandbox_url})
+
+    @server.get("/api/threads/{thread_id}/browser", response_model=BrowserState)
+    async def browser_state(thread_id: str) -> BrowserState:
+        return await app().browser_state(thread_id)
+
+    @server.post("/api/threads/{thread_id}/browser/enable", response_model=BrowserState)
+    async def enable_browser(thread_id: str) -> BrowserState:
+        return await app().enable_browser(thread_id)
+
+    @server.post("/api/threads/{thread_id}/browser/start", response_model=BrowserState)
+    async def start_browser(
+        thread_id: str, session_id: Annotated[str, Query(min_length=1, max_length=80)]
+    ) -> BrowserState:
+        return await app().start_browser(thread_id, session_id)
+
+    @server.post("/api/threads/{thread_id}/browser/stop", response_model=BrowserState)
+    async def stop_browser(
+        thread_id: str, session_id: Annotated[str, Query(min_length=1, max_length=80)]
+    ) -> BrowserState:
+        return await app().stop_browser(thread_id, session_id)
+
+    @server.get("/api/threads/{thread_id}/browser/frame", response_model=BrowserFrame)
+    async def browser_frame(
+        thread_id: str, session_id: Annotated[str, Query(min_length=1, max_length=80)]
+    ) -> BrowserFrame:
+        return await app().browser_frame(thread_id, session_id)
+
+    @server.get("/api/threads/{thread_id}/browser/dom", response_model=BrowserDOM)
+    async def browser_dom(
+        thread_id: str,
+        session_id: Annotated[str, Query(min_length=1, max_length=80)],
+        epoch: Annotated[str, Query(max_length=80)] = "",
+        after: Annotated[int, Query(ge=0)] = 0,
+    ) -> BrowserDOM:
+        return await app().browser_dom(thread_id, session_id, epoch=epoch, after=after)
+
+    @server.post(
+        "/api/threads/{thread_id}/browser/input", response_model=BrowserState, openapi_extra=_body(BrowserInput)
+    )
+    async def browser_input(thread_id: str, request: Request) -> BrowserState:
+        return await app().browser_input(thread_id, await _document(request, BrowserInput))
+
+    @server.post(
+        "/api/threads/{thread_id}/browser/navigate", response_model=BrowserState, openapi_extra=_body(BrowserNavigation)
+    )
+    async def navigate_browser(thread_id: str, request: Request) -> BrowserState:
+        return await app().navigate_browser(thread_id, await _document(request, BrowserNavigation))
+
+    @server.get("/api/threads/{thread_id}/browser/presentation", response_model=BrowserPresentation)
+    async def browser_presentation(thread_id: str, request: Request) -> BrowserPresentation:
+        nonlocal sandbox_url
+        state = await app().browser_state(thread_id)
+        if not state.enabled:
+            raise HarnessUiError("Enable this conversation's browser first.", code="browser_disabled")
+        async with sandbox_lock:
+            if sandbox_url is None:
+                source = await app().current_configuration()
+                assert source is not None and sandbox_resources is not None
+                sandbox = source.document.webui.mcp_apps.sandbox
+                if not ipaddress.ip_address(host).is_loopback and sandbox.public_url is None:
+                    raise HarnessUiError(
+                        "Configure a separate browser-visible sandbox public_url before opening the viewer.",
+                        code="browser_sandbox_unavailable",
+                    )
+                try:
+                    sandbox_url = await sandbox_resources.enter_async_context(
+                        serve_sandbox(sandbox, browser_viewer=await browser_viewer_html())
+                    )
+                except OSError as exc:
+                    raise HarnessUiError(
+                        "The browser viewer sandbox could not start.", code="browser_sandbox_unavailable"
+                    ) from exc
+            if origin(sandbox_url.removesuffix("/sandbox.html")) == origin(str(request.base_url)):
+                raise HarnessUiError(
+                    "Browser viewer requires a separate sandbox origin.", code="browser_sandbox_unavailable"
+                )
+            viewer = static_root / "browser-viewer.html"
+            if not viewer.is_file():
+                raise HarnessUiError(
+                    "Browser viewer assets are unavailable. Rebuild the WebUI assets.", code="browser_assets_missing"
+                )
+            return BrowserPresentation(
+                state=state, sandbox_url=sandbox_url.replace("/sandbox.html", "/browser-viewer.html")
+            )
 
     @server.get("/api/threads/{thread_id}/mcp/integrations", response_model=tuple[McpIntegrationView, ...])
     async def mcp_status(thread_id: str) -> tuple[McpIntegrationView, ...]:

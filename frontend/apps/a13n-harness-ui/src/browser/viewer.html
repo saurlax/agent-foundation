@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #f4f4f5;
+      }
+      html.dark,
+      .dark body {
+        background: #171717;
+      }
+      main {
+        height: 100%;
+        position: relative;
+      }
+      #viewport {
+        position: absolute;
+        top: 0;
+        left: 0;
+        transform-origin: top left;
+      }
+      .replayer-wrapper {
+        position: relative;
+      }
+      .replayer-wrapper iframe {
+        border: 0;
+        display: block;
+      }
+      .replayer-mouse {
+        display: none;
+      }
+      img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      img:not([src]) {
+        visibility: hidden;
+      }
+      #status {
+        position: absolute;
+        bottom: 16px;
+        left: 16px;
+        right: 16px;
+        width: fit-content;
+        max-width: calc(100% - 48px);
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        background: #27272a;
+        color: #fff;
+      }
+      #status[hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main aria-label="Shared browser DOM">
+      <div id="viewport"></div>
+      <span id="status" role="status">Connecting to the page DOM…</span>
+    </main>
+    <!-- VIEWER_SCRIPT -->
+  </body>
+</html>

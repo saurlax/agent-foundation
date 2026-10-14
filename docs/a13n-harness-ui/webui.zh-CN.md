@@ -32,6 +32,23 @@ flowchart TB
 
 Markdown 默认以 **Preview** 打开，**Text** 切换到编辑器。预览包含未保存编辑。**Add to chat** 附加选中的源码行，未选中时附加完整文件，不会发送。Agent 的 `/threads/{root_thread_id}?native=files&native_path={URL-encoded absolute Host path}` 链接打开 Files 抽屉；单独的路径和 Files API URL 不会，外部链接仍单独打开。
 
+## 在聊天旁使用浏览器
+
+先安装可选浏览器支持，并准备 Chromium：
+
+```bash
+uv pip install 'a13n-harness-ui[browser]'
+python -m playwright install chromium
+```
+
+Linux 可能还需要安装 Playwright 提示的系统依赖。运行时无需另行安装 Node.js；普通 Files、Shell 和聊天使用不会安装或启动浏览器。
+
+打开空闲的 **Full Control** 对话，选择 **Browser**，再点 **Enable browser**。可以在地址栏输入 HTTP(S) URL，或让 Agent 导航。你和 Agent 使用同一真实网页，可以同时点击、输入和选择；文字可以在旁栏选中并复制。浏览器运行在服务器电脑上，使用临时独立配置，不使用个人浏览器账户，也不属于 Agent 的 Sandbox。
+
+关闭旁栏会保留浏览器。**Stop browser**、归档对话或关闭服务器会丢弃临时配置。重启后需要重新启用，不会重放结果不确定的操作。
+
+旁栏同步 DOM 变化，不轮询截图。canvas、媒体、跨域 iframe、密码和文件输入尚不能完整镜像，外部资源的显示可能不同；Agent 仍可通过截图查看真实浏览器。断线后旧 DOM 会标记为过期。远程部署需要配置独立的 [MCP Apps 沙箱来源](mcp-apps.md)，即使没有启用第三方 App。
+
 ## 查看 Memory
 
 启用 Memory 后，左下导航的 **Memory** 按钮会打开一个只能观测的 Memory 页面。Global memory 与各个 Project 的作用域分开。中间区域复用对话历史、实时工具活动和 **Inspect & usage** ，但没有输入框或手动执行控件。每次自动整理 Run 都使用新的模型上下文，之前的轮次和记录的用量仍可查看，服务器重启后也会保留。

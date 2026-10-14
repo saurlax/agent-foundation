@@ -80,3 +80,7 @@ node_modules/
 
 # Checkout-local deployment workflows and private environment configuration
 /.internal/
+
+# Bundled read-only browser App generated during frontend build
+/frontend/apps/a13n-harness-ui/public/browser-viewer.html
+/frontend/apps/a13n-harness-ui/public/browser-recorder.js

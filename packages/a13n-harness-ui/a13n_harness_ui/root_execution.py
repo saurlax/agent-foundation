@@ -37,6 +37,8 @@ from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.messages import AgentStreamEvent, FunctionToolResultEvent
 from pydantic_ai.tools import DeferredToolApprovalResult, DeferredToolRequests, ToolApproved
 
+from a13n_harness_ui.browser import HostBrowsers
+from a13n_harness_ui.browser_tools import BrowserCapability
 from a13n_harness_ui.capability_runtime import production_run_bindings
 from a13n_harness_ui.composition import (
     AgentReconstructor,
@@ -58,6 +60,7 @@ from a13n_harness_ui.display_history import (
     with_display_history,
 )
 from a13n_harness_ui.environment_bindings import EnvironmentSelectionPatch
+from a13n_harness_ui.environment_profiles import FULL_CONTROL_PROFILE_ID
 from a13n_harness_ui.environment_runtime import EnvironmentFinalization, EnvironmentRunService
 from a13n_harness_ui.errors import RunCoordinationError, ThreadError
 from a13n_harness_ui.goal import GoalCapability, GoalView, saved_goal, with_goal
@@ -128,6 +131,7 @@ class RootRunAdmission:
     memory_positions: dict[str, str | None] = field(default_factory=dict)
     organization: MemoryOrganizationRun | None = None
     resume_usage: bool = False
+    browser_binding: str | None = None
 
 
 class RootRunExecutor:
@@ -151,9 +155,11 @@ class RootRunExecutor:
         work: ThreadWorkService | None = None,
         restart_coordinator: GracefulRestart | None = None,
         mcp_apps: AppSnapshots | None = None,
+        browsers: HostBrowsers | None = None,
     ) -> None:
         self._store = store
         self._mcp_apps = mcp_apps
+        self._browsers = browsers
         self._restart = restart_coordinator
         self._threads = threads
         self._configurations = configurations
@@ -314,6 +320,13 @@ class RootRunExecutor:
             response,
             positions,
             resume_usage=restart is not None and UsageSnapshot.from_state(previous_state) is not None,
+            browser_binding=(
+                self._browsers.binding(thread_id)
+                if self._browsers is not None
+                and published.value.environment_profile.profile_id == FULL_CONTROL_PROFILE_ID
+                and organization is None
+                else None
+            ),
         )
 
     async def execute(
@@ -412,6 +425,11 @@ class RootRunExecutor:
                     goal_capability,
                     RootCheckpointCapability(save_checkpoint),
                     _ToolPresentationCapability(retain_tool_presentation),
+                    *(
+                        (BrowserCapability(self._browsers, thread_id, admission.browser_binding),)
+                        if self._browsers is not None and admission.browser_binding is not None
+                        else ()
+                    ),
                     *(
                         (RestartPauseCapability(self._restart, thread_id),)
                         if self._restart is not None and admission.organization is None

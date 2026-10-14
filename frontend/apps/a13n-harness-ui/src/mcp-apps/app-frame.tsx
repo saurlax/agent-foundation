@@ -2,6 +2,7 @@ import {
   AppBridge,
   PostMessageTransport,
   type McpUiHostCapabilities,
+  type McpUiHostContext,
   type McpUiResourceCsp,
 } from "@modelcontextprotocol/ext-apps/app-bridge";
 import type { CallToolResult } from "@modelcontextprotocol/client";
@@ -19,6 +20,8 @@ export type AppHandlers = Partial<
 >;
 
 interface Props {
+  trustedBrowserViewer?: boolean;
+  layout?: "inline" | "panel";
   title: string;
   sandboxUrl: string;
   html: string;
@@ -57,11 +60,24 @@ export function AppFrame(props: Props) {
     frame.sandbox.add("allow-scripts", "allow-same-origin");
     frame.referrerPolicy = "no-referrer";
     frame.style.cssText =
-      "width:100%;height:320px;max-height:720px;border:0;display:block";
+      props.layout === "panel"
+        ? "width:100%;height:100%;border:0;display:block"
+        : "width:100%;height:320px;max-height:720px;border:0;display:block";
+    let initialized = false;
+    const hostContext = (): McpUiHostContext => ({
+      theme: document.documentElement.classList.contains("dark")
+        ? "dark"
+        : "light",
+      locale: document.documentElement.lang || navigator.language,
+      displayMode: "inline",
+      availableDisplayModes: ["inline"],
+      containerDimensions: props.layout === "panel" ? {} : { maxHeight: 720 },
+    });
     const bridge = new AppBridge(
       null,
       { name: "Harness UI", version: "1.0.0" },
       props.capabilities,
+      { hostContext: hostContext() },
     );
     const unsupported = () =>
       Promise.reject(new Error("This operation is unavailable in this View."));
@@ -76,17 +92,9 @@ export function AppFrame(props: Props) {
     bridge.onupdatemodelcontext = (params, extra) =>
       handlers.current.onupdatemodelcontext?.(params, extra) ?? unsupported();
     bridge.onrequestdisplaymode = async () => ({ mode: "inline" });
-    const updateHostContext = () =>
-      bridge.setHostContext({
-        theme: document.documentElement.classList.contains("dark")
-          ? "dark"
-          : "light",
-        locale: document.documentElement.lang || navigator.language,
-        displayMode: "inline",
-        availableDisplayModes: ["inline"],
-        containerDimensions: { maxHeight: 720 },
-      });
-    updateHostContext();
+    const updateHostContext = () => {
+      if (initialized) bridge.setHostContext(hostContext());
+    };
     const observer = new MutationObserver(updateHostContext);
     observer.observe(document.documentElement, {
       attributes: true,
@@ -105,15 +113,22 @@ export function AppFrame(props: Props) {
     frame.onerror = () =>
       fail(new Error("The App sandbox could not be loaded."));
     bridge.onsizechange = ({ height }) => {
-      if (height !== undefined && Number.isFinite(height))
+      if (
+        props.layout !== "panel" &&
+        height !== undefined &&
+        Number.isFinite(height)
+      )
         frame.style.height = `${Math.max(80, Math.min(720, height))}px`;
     };
     bridge.onsandboxready = () => {
+      if (props.trustedBrowserViewer) return;
       void bridge
         .sendSandboxResourceReady({ html: props.html, csp: props.csp })
         .catch(fail);
     };
     bridge.oninitialized = () => {
+      initialized = true;
+      updateHostContext();
       clearTimeout(startup);
       if (!disposed) setError(undefined);
       void (async () => {
@@ -148,17 +163,30 @@ export function AppFrame(props: Props) {
     props.arguments,
     props.result,
     props.capabilities,
+    props.layout,
+    props.trustedBrowserViewer,
   ]);
 
   return (
-    <div>
+    <div
+      style={
+        props.layout === "panel"
+          ? { height: "100%", display: "flex", flexDirection: "column" }
+          : undefined
+      }
+    >
       {error && (
         <p role="alert">
-          {error} The original tool result remains in the conversation. Close
-          and reopen the View to retry; the tool will not be called again.
+          {error}{" "}
+          {props.layout === "panel"
+            ? "Close and reopen the viewer to reconnect. Browser actions are not replayed."
+            : "The original tool result remains in the conversation. Close and reopen the View to retry; the tool will not be called again."}
         </p>
       )}
-      <div ref={container} />
+      <div
+        ref={container}
+        style={props.layout === "panel" ? { flex: 1, minHeight: 0 } : undefined}
+      />
     </div>
   );
 }

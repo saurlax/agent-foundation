@@ -36,6 +36,14 @@ from pydantic_ai import BinaryContent, prices
 from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.messages import TextContent, UserContent
 
+from a13n_harness_ui.browser import (
+    BrowserDOM,
+    BrowserFrame,
+    BrowserInput,
+    BrowserNavigation,
+    BrowserState,
+    HostBrowsers,
+)
 from a13n_harness_ui.composition import (
     AgentCompositionResolver,
     AgentReconstructor,
@@ -86,7 +94,11 @@ from a13n_harness_ui.content_plugins import ContentPluginStore
 from a13n_harness_ui.device_pairing import DevicePairings
 from a13n_harness_ui.devices import DeviceAttachment, DeviceConnections, DeviceInfo, DeviceSummary
 from a13n_harness_ui.environment_bindings import EnvironmentSelectionPatch
-from a13n_harness_ui.environment_profiles import BUILT_IN_ENVIRONMENT_PROFILES, built_in_environment_profile
+from a13n_harness_ui.environment_profiles import (
+    BUILT_IN_ENVIRONMENT_PROFILES,
+    FULL_CONTROL_PROFILE_ID,
+    built_in_environment_profile,
+)
 from a13n_harness_ui.environment_runtime import (
     EnvironmentRunService,
     EnvironmentSnapshotReconstructor,
@@ -388,8 +400,10 @@ class HarnessUiApp:
         mcp_operations: AppOperations | None = None,
         mcp_connections: HostConnections | None = None,
         mcp_inputs: Inputs | None = None,
+        browsers: HostBrowsers | None = None,
     ) -> None:
         self._settings = settings
+        self._browsers = browsers
         self._mcp_apps = mcp_apps
         self._mcp_connections = mcp_connections or (mcp_apps.connections if mcp_apps else None)
         self._mcp_inputs = mcp_inputs
@@ -1581,6 +1595,8 @@ class HarnessUiApp:
                 async with self._root_runs.require_inactive(thread_id):
                     await self._threads.update_metadata(thread_id=thread_id, mutation=mutation)
                 await self._retire_mcp_owners()
+                if self._browsers is not None and (binding := self._browsers.binding(thread_id)) is not None:
+                    await self._browsers.stop(thread_id, binding)
             else:
                 await self._threads.update_metadata(thread_id=thread_id, mutation=mutation)
             await self._summary_hub.publish(kind="thread", thread_id=thread_id)
@@ -1713,6 +1729,55 @@ class HarnessUiApp:
     @property
     def host_terminal_available(self) -> bool:
         return self._host_terminal.available
+
+    @property
+    def browser_available(self) -> bool:
+        return self._browsers is not None and self._browsers.available
+
+    def browsers(self) -> HostBrowsers:
+        if not self.browser_available or self._browsers is None:
+            raise HarnessUiError("Enable Host computer sharing to use the browser in WebUI.", code="browser_disabled")
+        return self._browsers
+
+    async def browser_state(self, thread_id: str) -> BrowserState:
+        async with self._operation():
+            browsers = self.browsers()
+            await browsers.authorize(thread_id)
+            return browsers.state(thread_id)
+
+    async def enable_browser(self, thread_id: str) -> BrowserState:
+        async with self._operation():
+            async with self._root_runs.require_inactive(thread_id):
+                return await self.browsers().enable(thread_id)
+
+    async def start_browser(self, thread_id: str, session_id: str) -> BrowserState:
+        async with self._operation():
+            return await self.browsers().start(thread_id, session_id)
+
+    async def stop_browser(self, thread_id: str, session_id: str) -> BrowserState:
+        async with self._operation():
+            await self._threads.require_interactive(thread_id)
+            return await self.browsers().stop(thread_id, session_id)
+
+    async def browser_frame(self, thread_id: str, session_id: str) -> BrowserFrame:
+        async with self._operation():
+            frame = await self.browsers().perform(thread_id, session_id, "screenshot")
+            assert isinstance(frame, BrowserFrame)
+            return frame
+
+    async def browser_dom(self, thread_id: str, session_id: str, *, epoch: str = "", after: int = 0) -> BrowserDOM:
+        async with self._operation():
+            return await self.browsers().dom(thread_id, session_id, epoch=epoch, after=after)
+
+    async def browser_input(self, thread_id: str, request: BrowserInput) -> BrowserState:
+        async with self._operation():
+            return await self.browsers().input(thread_id, request)
+
+    async def navigate_browser(self, thread_id: str, request: BrowserNavigation) -> BrowserState:
+        async with self._operation():
+            state = await self.browsers().perform(thread_id, request.session_id, "navigate", value=request.url)
+            assert isinstance(state, BrowserState)
+            return state
 
     async def create_host_terminal(self, request: TerminalCreate) -> TerminalView:
         async with self._operation():
@@ -3082,8 +3147,26 @@ async def open_harness_ui_app(
                 store=store,
                 configurations=configurations,
             )
+
+            async def authorize_browser(thread_id: str) -> None:
+                if host_mode != "webui" or not share_computer:
+                    raise HarnessUiError("Host browser access is disabled.", code="browser_disabled")
+                thread = await threads.require_interactive(thread_id)
+                if thread.parent_thread_id is not None or thread.memory_scope is not None or thread.archived:
+                    raise ThreadError(
+                        "Browser access requires an active root conversation.", code="browser_thread_unavailable"
+                    )
+                if thread.configuration.environment_profile_id != FULL_CONTROL_PROFILE_ID:
+                    raise ThreadError(
+                        "The Host browser requires Full Control; it does not inherit Sandbox isolation.",
+                        code="browser_full_control_required",
+                    )
+
+            browsers = HostBrowsers(available=host_mode == "webui" and share_computer, authorize=authorize_browser)
+            resources.push_async_callback(browsers.close)
             work = ThreadWorkService(store, summary_hub, operator.active_execution_ids)
             root_executor = RootRunExecutor(
+                browsers=browsers,
                 mcp_apps=mcp_apps,
                 restart_coordinator=restart_coordinator,
                 work=work,
@@ -3209,6 +3292,7 @@ async def open_harness_ui_app(
                 mcp_operations=mcp_operations,
                 mcp_connections=mcp_connections,
                 mcp_inputs=mcp_inputs,
+                browsers=browsers,
                 configuration_path=configuration_path,
                 catalog=catalog,
                 configurations=configurations,

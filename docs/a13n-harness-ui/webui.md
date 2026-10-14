@@ -32,6 +32,23 @@ flowchart TB
 
 Markdown opens in **Preview**; **Text** switches to the editor. Preview includes unsaved edits. **Add to chat** attaches selected source lines, or the complete file when nothing is selected, without sending. Agent links in the form `/threads/{root_thread_id}?native=files&native_path={URL-encoded absolute Host path}` open the Files drawer. Bare paths and Files API URLs do not; external links open separately.
 
+## Browse beside chat
+
+Install the optional browser support and prepare Chromium once:
+
+```bash
+uv pip install 'a13n-harness-ui[browser]'
+python -m playwright install chromium
+```
+
+On Linux, install Chromium's system dependencies as described by Playwright when needed. This does not require a separately installed Node.js. Browser preparation is independent of ordinary Files, Shell and chat use.
+
+Open an idle **Full Control** conversation, choose **Browser**, then **Enable browser**. Enter an HTTP(S) URL in the address bar, or ask the Agent to navigate. You and the Agent share one browser page; you can select and copy its text, click controls and enter ordinary text while the Agent works. The browser uses the server's computer and a temporary profile, not your personal browser or the Agent's Sandbox.
+
+Closing the viewer keeps the browser running. **Stop browser**, archiving the conversation or shutting down the server discards its profile. After restart, enable a new browser explicitly; uncertain actions are not replayed.
+
+The panel synchronizes the page DOM rather than polling screenshots. Canvas, media, cross-origin frames, password and file inputs are not fully mirrored, and external assets may differ. The Agent can use screenshots to inspect the actual browser. A lost connection marks the existing DOM stale. Remote WebUI deployments need the separate [MCP Apps sandbox origin](mcp-apps.md), even when no third-party App servers are enabled.
+
 ## Observe Memory
 
 The **Memory** button in the bottom-left navigation opens an observation-only Memory page when Memory is enabled. Global memory is separate from Project scopes. The center reuses conversation history, live tool activity and **Inspect & usage**, but has no input area or manual execution controls. Each automatic organization Run starts with fresh model context while previous rounds and recorded usage remain visible, including after server restart.

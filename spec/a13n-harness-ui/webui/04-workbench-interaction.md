@@ -124,15 +124,17 @@ Same-page presence is an awareness indicator, not a blanket Edit permission or a
 
 ## Default Layout
 
-| Region       | Default interaction                                                                                                               |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------- |
-| Sidebar      | Home, Drafts, Projects and conversations, supporting links, and footer participant/theme/session controls; a narrow-screen drawer |
-| Main area    | Chat remains the primary reading area with its shared composer                                                                    |
-| Right drawer | Files or Changes explorer and selected file/diff editor, closed until opened; file tabs stay inside the drawer                    |
-| Bottom panel | Resizable Host Terminal, closed until explicitly opened                                                                           |
-| Header       | One compact conversation title with Files, Changes, and Terminal toggles plus the editable collaboration name at the right        |
+| Region       | Default interaction                                                                                                                 |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Sidebar      | Home, Drafts, Projects and conversations, supporting links, and footer participant/theme/session controls; a narrow-screen drawer   |
+| Main area    | Chat remains the primary reading area with its shared composer                                                                      |
+| Right drawer | Files or Changes explorer, selected file/diff editor, or the built-in Browser; closed until opened                                  |
+| Bottom panel | Resizable Host Terminal, closed until explicitly opened                                                                             |
+| Header       | One compact conversation title with Files, Changes, Browser, and Terminal toggles plus the editable collaboration name at the right |
 
 The application frame stays within the viewport. Conversation history, code, explorer contents, and Settings content scroll within their own available space rather than growing the document. Files and Changes share the right drawer; selecting a file or comparison opens its editor inside that drawer without replacing desktop Chat. Back returns to the explorer, and file tabs retain previously opened views. The drawer has a keyboard-accessible width separator and remembers its size locally; closing it returns focus to Chat without discarding private buffers. A small in-tab Project cache retains directory, file tabs, and selected terminal. File tabs identify full paths and dirty buffers; closing a tab retains its private buffer without saving or discarding it. Reading a file or comparison preserves the mounted explorer's filter and scroll. Files and Changes filter loaded paths only and explicitly disclose additional pages. Common source files receive syntax highlighting, with line wrap, go-to-line, and save shortcuts; this is not a full editor workspace. The header does not stack instance status, a global file-tab row, and a second conversation title. The browser document title follows the current conversation title with the suffix `a13n harness ui`; pages without a conversation use exactly `a13n harness ui`. The terminal is independently resizable/collapsible. Closing a panel closes the view, not its server-side terminal session or Agent Run.
+
+The [built-in Browser](../11-browser.md) shares the right drawer and its sizing controls. Its DOM view supports text selection and simultaneous human/Agent interaction; closing the view leaves its Host session running.
 
 Settings uses a dedicated content layout. It does not display Chat/Files/Changes/Terminal controls or native panes. Entering Settings detaches the selected terminal view without closing its session and retains private file/configuration drafts. Returning to the workbench restores retained tabs and automatically reattaches a previously visible terminal as a viewer, unless the participant explicitly disconnected it. A small bounded set of recent terminal screens remains in tab memory; evicted screens and server retention gaps do not imply recovered output.
 

@@ -663,6 +663,443 @@
         }
       }
     },
+    "/api/threads/{thread_id}/browser": {
+      "get": {
+        "summary": "Browser State",
+        "operationId": "browser_state_api_threads__thread_id__browser_get",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/threads/{thread_id}/browser/enable": {
+      "post": {
+        "summary": "Enable Browser",
+        "operationId": "enable_browser_api_threads__thread_id__browser_enable_post",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/threads/{thread_id}/browser/start": {
+      "post": {
+        "summary": "Start Browser",
+        "operationId": "start_browser_api_threads__thread_id__browser_start_post",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/threads/{thread_id}/browser/stop": {
+      "post": {
+        "summary": "Stop Browser",
+        "operationId": "stop_browser_api_threads__thread_id__browser_stop_post",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/threads/{thread_id}/browser/frame": {
+      "get": {
+        "summary": "Browser Frame",
+        "operationId": "browser_frame_api_threads__thread_id__browser_frame_get",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserFrame"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/threads/{thread_id}/browser/dom": {
+      "get": {
+        "summary": "Browser Dom",
+        "operationId": "browser_dom_api_threads__thread_id__browser_dom_get",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          },
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80,
+              "title": "Session Id"
+            }
+          },
+          {
+            "name": "epoch",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 80,
+              "default": "",
+              "title": "Epoch"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "After"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserDOM"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/threads/{thread_id}/browser/input": {
+      "post": {
+        "summary": "Browser Input",
+        "operationId": "browser_input_api_threads__thread_id__browser_input_post",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrowserInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/threads/{thread_id}/browser/navigate": {
+      "post": {
+        "summary": "Navigate Browser",
+        "operationId": "navigate_browser_api_threads__thread_id__browser_navigate_post",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserState"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrowserNavigation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/threads/{thread_id}/browser/presentation": {
+      "get": {
+        "summary": "Browser Presentation",
+        "operationId": "browser_presentation_api_threads__thread_id__browser_presentation_get",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserPresentation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/threads/{thread_id}/mcp/integrations": {
       "get": {
         "summary": "Mcp Status",
@@ -6890,6 +7327,142 @@
         ],
         "title": "Availability"
       },
+      "BrowserDOM": {
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/BrowserState"
+          },
+          "epoch": {
+            "type": "string",
+            "title": "Epoch"
+          },
+          "cursor": {
+            "type": "integer",
+            "title": "Cursor"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Observed At"
+          },
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "state",
+          "epoch",
+          "cursor",
+          "observed_at",
+          "events"
+        ],
+        "title": "BrowserDOM"
+      },
+      "BrowserFrame": {
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/BrowserState"
+          },
+          "captured_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Captured At"
+          },
+          "image": {
+            "type": "string",
+            "maxLength": 4194304,
+            "title": "Image"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "state",
+          "captured_at",
+          "image"
+        ],
+        "title": "BrowserFrame"
+      },
+      "BrowserPresentation": {
+        "properties": {
+          "state": {
+            "$ref": "#/components/schemas/BrowserState"
+          },
+          "sandbox_url": {
+            "type": "string",
+            "title": "Sandbox Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "state",
+          "sandbox_url"
+        ],
+        "title": "BrowserPresentation"
+      },
+      "BrowserState": {
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": false
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "disabled",
+              "stopped",
+              "ready",
+              "disconnected",
+              "failed"
+            ],
+            "title": "Status",
+            "default": "disabled"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "default": ""
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "BrowserState"
+      },
       "CapabilitySelection": {
         "properties": {
           "capability": {
@@ -10415,6 +10988,11 @@
           "host_terminal": {
             "type": "boolean",
             "title": "Host Terminal",
+            "default": false
+          },
+          "browser": {
+            "type": "boolean",
+            "title": "Browser",
             "default": false
           }
         },
@@ -18013,6 +18591,108 @@
           "name"
         ],
         "title": "PairingRequest"
+      },
+      "BrowserInput": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "epoch": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Epoch",
+            "type": "string"
+          },
+          "node_id": {
+            "minimum": 1,
+            "title": "Node Id",
+            "type": "integer"
+          },
+          "action": {
+            "enum": [
+              "click",
+              "fill",
+              "press",
+              "scroll",
+              "select"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 16384,
+            "title": "Text",
+            "type": "string"
+          },
+          "key": {
+            "default": "Enter",
+            "enum": [
+              "Enter",
+              "Tab",
+              "Escape",
+              "Backspace",
+              "ArrowDown",
+              "ArrowUp",
+              "ArrowLeft",
+              "ArrowRight",
+              "PageDown",
+              "PageUp",
+              "Space"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "x": {
+            "default": 0,
+            "maximum": 100000,
+            "minimum": 0,
+            "title": "X",
+            "type": "integer"
+          },
+          "y": {
+            "default": 0,
+            "maximum": 100000,
+            "minimum": 0,
+            "title": "Y",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "session_id",
+          "epoch",
+          "node_id",
+          "action"
+        ],
+        "title": "BrowserInput",
+        "type": "object"
+      },
+      "BrowserNavigation": {
+        "additionalProperties": false,
+        "properties": {
+          "session_id": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Session Id",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 8192,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_id",
+          "url"
+        ],
+        "title": "BrowserNavigation",
+        "type": "object"
       },
       "McpInputResponse": {
         "additionalProperties": false,

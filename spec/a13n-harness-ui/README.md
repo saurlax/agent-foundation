@@ -34,6 +34,8 @@ Harness UI depends on the [Harness](../a13n-harness/README.md), including its [E
 
 [Live Mode](10-live-mode.md) owns root Live configuration, the built-in projectless executor, persistent voice transcript, browser media ownership, and online-only Thread reporting.
 
+[Built-in Host Browser](11-browser.md) owns optional Chromium sessions, shared Agent/human page operations, DOM projection, viewer isolation and cleanup.
+
 The [WebUI catalog](webui/README.md) indexes the browser workbench, page presence and collaborative conversations, native computer sharing, and bundled/Docker distribution contracts. Listener and HTTP/API behavior remain owned by `05`; transient draft storage remains owned by `03`.
 
 ## Reading Paths

@@ -1,5 +1,7 @@
 # MCP Apps Host
 
+The [built-in Host browser](11-browser.md) separately reuses the public bridge and sandbox for a live DOM viewer. It does not grant ordinary third-party Apps browser control or panel display modes, or change their retained-original contract.
+
 ## Design Position
 
 Harness UI hosts MCP Apps in its WebUI. An App is an interactive presentation of an actual MCP tool result, not an Agent, a new execution engine, or a browser-control session. The Python App owns MCP connections, retained originals and interaction authority; the authenticated browser owns a View and trusted human confirmation. The MCP server owns its business state.

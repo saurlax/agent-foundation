@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 import ipaddress
 import json
 import socket
@@ -62,7 +64,7 @@ def content_security_policy(host: str, declarations: object) -> str:
     )
 
 
-def create_sandbox() -> Starlette:
+def create_sandbox(*, browser_viewer: str | None = None) -> Starlette:
     html = Path(__file__).with_name("sandbox.html").read_text(encoding="utf-8")
 
     async def proxy(request: Request) -> Response:
@@ -83,7 +85,32 @@ def create_sandbox() -> Starlette:
             },
         )
 
-    return Starlette(routes=[Route("/sandbox.html", proxy)])
+    async def viewer(request: Request) -> Response:
+        if browser_viewer is None:
+            return Response("Browser viewer assets unavailable.", status_code=404)
+        try:
+            host = origin(request.query_params.get("host", ""))
+        except ValueError:
+            return Response("Invalid Host origin.", status_code=400)
+        # Only the exact bundled viewer script may execute, including in the
+        # interactive child document. Site handlers and scripts are denied by CSP.
+        script = browser_viewer.partition("<script>")[2].rpartition("</script>")[0]
+        digest = base64.b64encode(hashlib.sha256(script.encode()).digest()).decode()
+        policy = content_security_policy(host, {}).replace(
+            "script-src 'unsafe-inline' ", f"script-src 'sha256-{digest}'"
+        )
+        return HTMLResponse(
+            browser_viewer,
+            headers={
+                "Content-Security-Policy": policy,
+                "X-Content-Type-Options": "nosniff",
+                "Referrer-Policy": "no-referrer",
+                "Cache-Control": "no-store",
+                "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+            },
+        )
+
+    return Starlette(routes=[Route("/sandbox.html", proxy), Route("/browser-viewer.html", viewer)])
 
 
 class _SandboxServer(uvicorn.Server):
@@ -94,7 +121,9 @@ class _SandboxServer(uvicorn.Server):
 
 
 @asynccontextmanager
-async def serve_sandbox(configuration: McpAppsSandboxConfiguration) -> AsyncIterator[str]:
+async def serve_sandbox(
+    configuration: McpAppsSandboxConfiguration, *, browser_viewer: str | None = None
+) -> AsyncIterator[str]:
     """Own one static listener; no signals, auth middleware, or application API."""
     address = ipaddress.ip_address(configuration.bind)
     family = socket.AF_INET6 if address.version == 6 else socket.AF_INET
@@ -107,7 +136,11 @@ async def serve_sandbox(configuration: McpAppsSandboxConfiguration) -> AsyncIter
         host = f"[{address}]" if address.version == 6 else str(address)
         public = configuration.public_url or f"http://{host}:{port}"
         public = origin(public)
-        server = _SandboxServer(uvicorn.Config(create_sandbox(), log_level="warning", lifespan="off", access_log=False))
+        server = _SandboxServer(
+            uvicorn.Config(
+                create_sandbox(browser_viewer=browser_viewer), log_level="warning", lifespan="off", access_log=False
+            )
+        )
         task = asyncio.create_task(server.serve(sockets=[listener]), name="mcp-app-sandbox")
         try:
             while not server.started:
