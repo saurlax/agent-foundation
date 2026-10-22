@@ -19,6 +19,7 @@ from urllib.parse import quote, urlsplit
 import click
 import uvicorn
 from a13n_envd_client.eip.v1 import DirectoryListResult
+from a13n_harness.capabilities.browser import BrowserError
 from a13n_harness.providers.environment.remote_envd.pairing import (
     PAIRING_PATH,
     PairingChallenge,
@@ -45,7 +46,9 @@ from a13n_harness_ui.browser import (
     BrowserCommand,
     BrowserControl,
     BrowserState,
+    BrowserViewerInput,
     BrowserViewportRequest,
+    InputBuffer,
 )
 from a13n_harness_ui.browser_setup import BrowserScan, BrowserSetup
 from a13n_harness_ui.configuration import ResourceMutationRequest
@@ -1177,57 +1180,73 @@ def create_webui(
     async def connect_browser(
         socket: WebSocket, thread_id: str, ticket: Annotated[str, Query(min_length=16, max_length=80)]
     ) -> None:
-        # HTTP authentication issues a short-lived single-use ticket. The API key never enters the URL.
+        browsers = app().browsers()
         try:
-            browsers = app().browsers()
-            session, reader, writer = await browsers.connect(thread_id, ticket)
-        except (HarnessUiError, OSError):
-            await socket.close(code=4403)
-            return
-        try:
-            await socket.accept(subprotocol="binary" if "binary" in socket.scope.get("subprotocols", []) else None)
-            async with create_task_group() as group:
+            async with browsers.viewer(thread_id, ticket) as viewer:
+                await socket.accept()
+                inputs = InputBuffer()
+                async with create_task_group() as group:
 
-                async def output() -> None:
-                    try:
-                        while data := await reader.read(64 * 1024):
-                            await socket.send_bytes(data)
-                    finally:
-                        group.cancel_scope.cancel()
+                    async def output() -> None:
+                        try:
+                            while not viewer.closed.is_set():
+                                frame = await viewer.frames.get()
+                                # WebSocket writes provide transport backpressure;
+                                # the producer retains only the newest unsent frame.
+                                async with asyncio.timeout(10):
+                                    await socket.send_bytes(base64.b64decode(frame["data"], validate=True))
+                        finally:
+                            group.cancel_scope.cancel()
 
-                async def input_() -> None:
-                    try:
-                        while True:
-                            message = await socket.receive()
-                            data = message.get("bytes")
-                            if not isinstance(data, bytes) or len(data) > 64 * 1024:
-                                break
-                            writer.write(data)
-                            await writer.drain()
-                    finally:
-                        group.cancel_scope.cancel()
+                    async def input_() -> None:
+                        try:
+                            while not viewer.closed.is_set():
+                                raw = await socket.receive_text()
+                                if len(raw) > 100000:
+                                    raise ValueError("Browser input too large")
+                                await inputs.put(BrowserViewerInput.model_validate_json(raw))
+                        finally:
+                            group.cancel_scope.cancel()
 
-                async def authority() -> None:
-                    try:
-                        while True:
-                            await asyncio.sleep(1)
-                            await browsers.authorize(thread_id)
-                            if session.retired or writer.is_closing():
-                                return
-                    finally:
-                        group.cancel_scope.cancel()
+                    async def dispatch() -> None:
+                        try:
+                            while not viewer.closed.is_set():
+                                request = await inputs.get()
+                                try:
+                                    copied = await browsers.input(
+                                        viewer, request.input, control_token=request.control_token
+                                    )
+                                    if isinstance(copied, str):
+                                        await socket.send_json(
+                                            {
+                                                "type": "clipboard",
+                                                "text": copied,
+                                                "control_token": request.control_token,
+                                            }
+                                        )
+                                except HarnessUiError as exc:
+                                    if exc.code not in {"browser_control_required", "browser_control_conflict"}:
+                                        raise
+                                    await socket.send_json({"type": "input_rejected", "message": str(exc)})
+                        finally:
+                            group.cancel_scope.cancel()
 
-                group.start_soon(output)
-                group.start_soon(input_)
-                group.start_soon(authority)
-        except* (WebSocketDisconnect, OSError, HarnessUiError):
+                    async def authority() -> None:
+                        try:
+                            while not viewer.closed.is_set():
+                                await asyncio.sleep(1)
+                                await browsers.authorize(thread_id)
+                                browsers.checked(thread_id, viewer.binding)
+                        finally:
+                            group.cancel_scope.cancel()
+
+                    group.start_soon(output)
+                    group.start_soon(input_)
+                    group.start_soon(dispatch)
+                    group.start_soon(authority)
+        except* (WebSocketDisconnect, OSError, HarnessUiError, BrowserError, ValueError, TimeoutError):
             pass
         finally:
-            await browsers.disconnect(session, writer)
-            try:
-                await writer.wait_closed()
-            except OSError:
-                pass
             try:
                 await socket.close()
             except (RuntimeError, WebSocketDisconnect):

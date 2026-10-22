@@ -42,6 +42,9 @@ e2b = [
     "e2b>=2.46.4,<3",
 ]
 modal = ["modal>=1.5.5,<2"]
+browser = [
+    "cdp-use>=1.4.5,<2",
+]
 
 [project.urls]
 Homepage = "https://a13n.dev/"

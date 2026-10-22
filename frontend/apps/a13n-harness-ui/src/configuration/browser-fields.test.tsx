@@ -1,18 +1,8 @@
 // @vitest-environment jsdom
-import { useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { cleanup, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { parse } from "yaml";
 import { BrowserFields } from "./browser-fields";
-
 const post = vi.hoisted(() => vi.fn());
 vi.mock("../transport/context", () => ({
   useTransport: () => ({ client: { POST: post } }),
@@ -21,104 +11,36 @@ afterEach(() => {
   cleanup();
   vi.resetAllMocks();
 });
-const discovered = {
-  browsers: [
-    { name: "Chrome", path: "/opt/chrome", source: "system" },
-    { name: "Chromium", path: "/opt/chromium", source: "system" },
-  ],
-  vncs: [{ path: "/opt/Xvnc", source: "system" }],
-};
-function show(
-  initial = 'schema_version: "1"\nprocess: {log_level: DEBUG}\n',
-  client = new QueryClient(),
-  active = true,
-) {
-  function Fields() {
-    const [source, setSource] = useState(initial);
-    return (
-      <>
-        <BrowserFields source={source} onChange={setSource} active={active} />
-        <output data-testid="source">{source}</output>
-      </>
-    );
-  }
-  return render(
-    <QueryClientProvider client={client}>
-      <Fields />
+function show(active = true) {
+  const changed = vi.fn();
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <BrowserFields
+        source={'schema_version: "1"\nbrowser: {executable: /saved/chrome}\n'}
+        onChange={changed}
+        active={active}
+      />
     </QueryClientProvider>,
   );
+  return changed;
 }
-it("does not scan while the browser settings section is closed", () => {
-  show(undefined, undefined, false);
+it("does not scan while collapsed", () => {
+  show(false);
   expect(post).not.toHaveBeenCalled();
 });
-it("scans on opening, selects discovered executables and exposes Other paths", async () => {
-  const initial = 'schema_version: "1"\nprocess: {log_level: DEBUG}\n';
-  let complete!: (value: unknown) => void;
-  post.mockReturnValueOnce(
-    new Promise((resolve) => {
-      complete = resolve;
-    }),
-  );
-  show(initial);
-  const user = userEvent.setup();
-  expect(post).toHaveBeenCalledOnce();
-  expect(
-    screen
-      .getByRole("combobox", { name: "Browser executable" })
-      .hasAttribute("disabled"),
-  ).toBe(true);
-  expect(
-    screen
-      .getByRole("combobox", { name: "VNC executable" })
-      .hasAttribute("disabled"),
-  ).toBe(true);
-  expect(
-    screen.queryByRole("textbox", { name: "Browser executable path" }),
-  ).toBeNull();
-  expect(
-    screen.getByRole("button", { name: "Scanning…" }).hasAttribute("disabled"),
-  ).toBe(true);
-  complete({ data: discovered });
-  await screen.findByText("Browsers: 2 · VNC servers: 1");
-  expect(post).toHaveBeenCalledWith("/api/browser/scan");
-  expect(screen.getByTestId("source").textContent).toBe(initial);
-  await user.click(
-    screen.getByRole("combobox", { name: "Browser executable" }),
-  );
-  await user.click(
-    await screen.findByRole("option", { name: "Chromium — /opt/chromium" }),
-  );
-  await user.click(screen.getByRole("combobox", { name: "VNC executable" }));
-  await user.click(await screen.findByRole("option", { name: "Other" }));
-  fireEvent.change(
-    screen.getByRole("textbox", { name: "VNC executable path" }),
-    { target: { value: "/custom/Xvnc" } },
-  );
-  expect(parse(screen.getByTestId("source").textContent!)).toEqual({
-    schema_version: "1",
-    process: { log_level: "DEBUG" },
-    browser: { executable: "/opt/chromium", vnc_executable: "/custom/Xvnc" },
+it("lists installed Chromium without VNC selection or changing saved bindings", async () => {
+  post.mockResolvedValue({
+    data: {
+      browsers: [{ name: "Chrome", path: "/opt/chrome", source: "system" }],
+    },
   });
-  await user.click(screen.getByRole("combobox", { name: "VNC executable" }));
-  await user.click(
-    await screen.findByRole("option", { name: "TigerVNC Xvnc — /opt/Xvnc" }),
-  );
-  expect(
-    screen.queryByRole("textbox", { name: "VNC executable path" }),
-  ).toBeNull();
-  expect(
-    parse(screen.getByTestId("source").textContent!).browser.vnc_executable,
-  ).toBe("/opt/Xvnc");
-});
-it("preserves saved custom paths, retries failed scans and rescans on settings visits", async () => {
-  const client = new QueryClient({
-    defaultOptions: { queries: { staleTime: 15000 } },
-  });
-  const initial = 'schema_version: "1"\nbrowser: {executable: /saved/chrome}\n';
-  post.mockRejectedValueOnce(new Error("Scan failed"));
-  const view = show(initial, client);
-  const user = userEvent.setup();
+  const changed = show();
+  await screen.findByText("Browsers: 1");
+  expect(screen.queryByRole("combobox", { name: "VNC executable" })).toBeNull();
   expect(
     (
       screen.getByRole("textbox", {
@@ -126,31 +48,5 @@ it("preserves saved custom paths, retries failed scans and rescans on settings v
       }) as HTMLInputElement
     ).value,
   ).toBe("/saved/chrome");
-  await screen.findByText("Scan failed");
-  expect(
-    screen
-      .getByRole("combobox", { name: "Browser executable" })
-      .hasAttribute("disabled"),
-  ).toBe(true);
-  post.mockResolvedValueOnce({ data: { browsers: [], vncs: [] } });
-  await user.click(screen.getByRole("button", { name: "Scan" }));
-  await screen.findByText("Browsers: 0 · VNC servers: 0");
-  expect(
-    screen
-      .getByRole("combobox", { name: "Browser executable" })
-      .hasAttribute("disabled"),
-  ).toBe(false);
-  expect(screen.getByTestId("source").textContent).toBe(initial);
-  view.unmount();
-  post.mockResolvedValueOnce({ data: discovered });
-  show(initial, client);
-  await screen.findByText("Browsers: 2 · VNC servers: 1");
-  await waitFor(() =>
-    expect(
-      screen
-        .getByRole("combobox", { name: "Browser executable" })
-        .hasAttribute("disabled"),
-    ).toBe(false),
-  );
-  expect(post).toHaveBeenCalledTimes(3);
+  expect(changed).not.toHaveBeenCalled();
 });

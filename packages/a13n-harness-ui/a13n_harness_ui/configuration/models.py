@@ -344,10 +344,9 @@ class BrowserConfiguration(ConfigurationModel):
     """Host executable bindings captured at App startup; never install dependencies."""
 
     executable: str | None = Field(default=None, min_length=1, max_length=4096)
-    vnc_executable: str | None = Field(default=None, min_length=1, max_length=4096)
     profile_root: str | None = Field(default=None, min_length=1, max_length=4096)
 
-    @field_validator("executable", "vnc_executable", "profile_root")
+    @field_validator("executable", "profile_root")
     @classmethod
     def _host_path(cls, value: str | None) -> str | None:
         if value is not None:

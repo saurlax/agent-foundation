@@ -352,7 +352,7 @@ export function ResourceFields({
               open={location.hash === "#browser" || undefined}
             >
               <summary>
-                Host browser<small>Browser, VNC and profile storage</small>
+                Host browser<small>Browser and profile storage</small>
               </summary>
               <BrowserFields
                 source={source}

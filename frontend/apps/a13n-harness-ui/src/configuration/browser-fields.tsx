@@ -49,7 +49,7 @@ export function BrowserFields({
             {scan.isFetching
               ? "Checking installed executables…"
               : scan.data
-                ? `Browsers: ${scan.data.browsers?.length ?? 0} · VNC servers: ${scan.data.vncs?.length ?? 0}`
+                ? `Browsers: ${scan.data.browsers?.length ?? 0}`
                 : "Click Scan to retry executable discovery."}
           </span>
         </div>
@@ -64,17 +64,6 @@ export function BrowserFields({
           disabled={disabled}
           onChange={(value) => set("executable", value)}
           description="Choose the Chrome, Chromium or Edge executable that Harness should always launch."
-        />
-        <ExecutableField
-          label="VNC executable"
-          value={text("vnc_executable")}
-          candidates={(scan.data?.vncs ?? []).map((item) => ({
-            value: item.path,
-            label: `${item.kind === "x11vnc" ? "x11vnc" : item.kind === "wayvnc" ? "WayVNC" : "TigerVNC Xvnc"} — ${item.path}`,
-          }))}
-          disabled={disabled}
-          onChange={(value) => set("vnc_executable", value)}
-          description="TigerVNC Xvnc, x11vnc with Xvfb, or WayVNC with headless Sway. Harness manages its own graphical session."
         />
         <TextField
           label="Shared profile directory"

@@ -8845,22 +8845,12 @@
           "ticket": {
             "type": "string",
             "title": "Ticket"
-          },
-          "control": {
-            "type": "boolean",
-            "title": "Control"
-          },
-          "password": {
-            "type": "string",
-            "title": "Password"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "ticket",
-          "control",
-          "password"
+          "ticket"
         ],
         "title": "BrowserAccess"
       },
@@ -8896,8 +8886,7 @@
             "type": "string",
             "enum": [
               "system",
-              "custom",
-              "playwright"
+              "custom"
             ],
             "title": "Source"
           }
@@ -8951,6 +8940,16 @@
         ],
         "type": "string"
       },
+      "BrowserRatio": {
+        "enum": [
+          "native",
+          "16:9",
+          "4:3",
+          "1:1",
+          "9:16"
+        ],
+        "type": "string"
+      },
       "BrowserRequirement": {
         "properties": {
           "name": {
@@ -8989,14 +8988,6 @@
             "type": "array",
             "title": "Browsers",
             "default": []
-          },
-          "vncs": {
-            "items": {
-              "$ref": "#/components/schemas/VncExecutable"
-            },
-            "type": "array",
-            "title": "Vncs",
-            "default": []
           }
         },
         "additionalProperties": false,
@@ -9031,16 +9022,6 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/BrowserExecutable"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "vnc": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/VncExecutable"
               },
               {
                 "type": "null"
@@ -9126,6 +9107,10 @@
             "$ref": "#/components/schemas/BrowserPreset",
             "default": "desktop"
           },
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/BrowserRatio",
+            "default": "native"
+          },
           "viewports": {
             "items": {
               "$ref": "#/components/schemas/BrowserViewport"
@@ -9180,7 +9165,7 @@
           "resize_available": {
             "type": "boolean",
             "title": "Resize Available",
-            "default": false
+            "default": true
           }
         },
         "additionalProperties": false,
@@ -20767,79 +20752,6 @@
         "title": "VideoInputPolicy",
         "description": "Base64-after byte budget for both one video and all inline videos in a request."
       },
-      "VncExecutable": {
-        "properties": {
-          "kind": {
-            "$ref": "#/components/schemas/VncKind",
-            "default": "tigervnc"
-          },
-          "path": {
-            "type": "string",
-            "title": "Path"
-          },
-          "source": {
-            "type": "string",
-            "enum": [
-              "system",
-              "custom"
-            ],
-            "title": "Source"
-          },
-          "window_manager": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Window Manager"
-          },
-          "xrandr": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Xrandr"
-          },
-          "display_server": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Display Server"
-          },
-          "disable_resizing": {
-            "type": "boolean",
-            "title": "Disable Resizing",
-            "default": false
-          }
-        },
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "path",
-          "source"
-        ],
-        "title": "VncExecutable"
-      },
-      "VncKind": {
-        "type": "string",
-        "enum": [
-          "tigervnc",
-          "x11vnc",
-          "wayvnc"
-        ]
-      },
       "VoiceSnapshot": {
         "properties": {
           "status": {
@@ -22797,6 +22709,10 @@
           },
           "preset": {
             "$ref": "#/components/schemas/BrowserPreset"
+          },
+          "aspect_ratio": {
+            "$ref": "#/components/schemas/BrowserRatio",
+            "default": "native"
           }
         },
         "required": [
@@ -22813,12 +22729,6 @@
             "maxLength": 80,
             "minLength": 1,
             "title": "Session Id",
-            "type": "string"
-          },
-          "control_token": {
-            "default": "",
-            "maxLength": 80,
-            "title": "Control Token",
             "type": "string"
           }
         },

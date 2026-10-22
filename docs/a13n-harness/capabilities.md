@@ -129,6 +129,32 @@ Each feature has one public Capability. Its internal run-bound instance stays pr
 
 For inline children, `SubagentDefinition.run_bindings_factory` receives the child's baseline `RunBindings` and returns a replacement with that child's collaborators. It must preserve the child instance, borrowed Environment, and inherited invocation policy. Parent feature bindings are not inherited automatically; an explicit shared task-state policy supplies the borrowed cell and rejects a conflicting factory binding.
 
+## Browser Use over CDP
+
+Give an Agent navigation, observation, click, text input and screenshot tools for an existing Chromium browser. Install `a13n-harness[browser]` and pass the browser's trusted CDP URL. The URL can be an HTTP(S) base address such as `http://127.0.0.1:9222` or a WS(S) browser debugger URL.
+
+```python
+from a13n_harness import AgentSpec, HarnessBuilder
+from a13n_harness.capabilities import BrowserUseCapability
+from a13n_harness.capabilities.browser.cdp import CdpBrowserBackend
+
+
+async def browse(cdp_url: str, model):
+    async with CdpBrowserBackend.connect(cdp_url) as backend:
+        agent = HarnessBuilder().build(
+            AgentSpec(),
+            model=model,
+            output_type=str,
+            capabilities=(BrowserUseCapability(backend),),
+        )
+        result = await agent.run("Open https://example.com and read its heading.")
+        return result.output_or_raise()
+```
+
+Keep the connection context open until every Run using the backend has finished. The context opens a dedicated page and closes that page on exit. The existing browser process and other pages remain open. Harness does not install or start the browser. Browser traffic uses the Host's network; a restrictive `allowed_hosts` Run policy is rejected.
+
+Applications that manage multiple pages can use `Chromium.connect(cdp_url)` from the same module. Harness UI uses this shared adapter for automation, input and page streaming. Harness UI retains browser/profile startup, Thread and popup ownership, viewer authentication and human takeover. The standalone backend operates its explicit page and does not add those UI lifecycle features.
+
 ## Native Image Generation with Saving
 
 `NativeImageGenerationCapability` combines the provider-native `ImageGenerationTool` with a required async saver. Unlike selecting the raw upstream tool, a completed generation produces a saved reference rather than leaving the image only inside the model response. There is no separate output-replacement Capability, image API client, or fallback Model.

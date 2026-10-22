@@ -141,17 +141,16 @@ async def test_settings_yaml_reports_duplicate_keys_and_explicit_missing_file(
 async def test_browser_executable_and_profile_configuration_survives_source_loading(tmp_path):
     path = tmp_path / "settings.yaml"
     path.write_text(
-        'schema_version: "1"\nbrowser:\n  executable: /opt/chrome\n  vnc_executable: /opt/Xvnc\n  profile_root: /srv/browser-profiles\n'
+        'schema_version: "1"\nbrowser:\n  executable: /opt/chrome\n  profile_root: /srv/browser-profiles\n'
     )
     source = await load_harness_ui_settings(path)
     assert source.configuration is not None and source.candidate_error is None
     browser = source.configuration.document.browser
     assert browser.executable == "/opt/chrome"
-    assert browser.vnc_executable == "/opt/Xvnc"
     assert browser.profile_root == "/srv/browser-profiles"
 
 
-@pytest.mark.parametrize("field", ["executable", "vnc_executable", "profile_root"])
+@pytest.mark.parametrize("field", ["executable", "profile_root"])
 @pytest.mark.parametrize("value", ["relative/path", "", "/invalid\x00path"])
 def test_browser_configuration_requires_absolute_nonempty_host_paths(field, value):
     from a13n_harness_ui.configuration.models import BrowserConfiguration

@@ -129,6 +129,32 @@ executable = HarnessBuilder(
 
 内联子 Agent 的 `SubagentDefinition.run_bindings_factory` 接收子 Agent 基础 `RunBindings`，返回携带其协作对象的替代绑定。必须保留子实例、借用环境和继承的调用策略。父功能绑定不会自动继承；显式共享任务状态策略提供借用状态单元，并拒绝与工厂绑定冲突。
 
+## 通过 CDP 使用浏览器
+
+为 Agent 提供操作现有 Chromium 浏览器的导航、观察、点击、文本填写和截图工具。安装 `a13n-harness[browser]`，然后传入可信的 CDP URL。URL 可以是 `http://127.0.0.1:9222` 这样的 HTTP(S) 基址，也可以是 WS(S) 浏览器调试地址。
+
+```python
+from a13n_harness import AgentSpec, HarnessBuilder
+from a13n_harness.capabilities import BrowserUseCapability
+from a13n_harness.capabilities.browser.cdp import CdpBrowserBackend
+
+
+async def browse(cdp_url: str, model):
+    async with CdpBrowserBackend.connect(cdp_url) as backend:
+        agent = HarnessBuilder().build(
+            AgentSpec(),
+            model=model,
+            output_type=str,
+            capabilities=(BrowserUseCapability(backend),),
+        )
+        result = await agent.run("Open https://example.com and read its heading.")
+        return result.output_or_raise()
+```
+
+连接上下文需要保持打开，直到所有借用该 backend 的 Run 完成。上下文会创建一个专用网页，退出时关闭该网页；现有浏览器进程和其他网页继续运行。Harness 不安装或启动浏览器。浏览器使用 Host 的网络，因此不支持限制性的 `allowed_hosts` Run 策略。
+
+需要管理多个网页的应用可以使用同一模块的 `Chromium.connect(cdp_url)`。Harness UI 通过这个共享适配器完成自动化、输入和网页画面传输。浏览器及 profile 的启动、Thread 和弹窗归属、查看权限和人工接管仍由 Harness UI 管理。独立 backend 只操作明确分配给它的网页，不包含这些 UI 生命周期功能。
+
 ## 原生图像生成与保存
 
 `NativeImageGenerationCapability` 将 provider 原生 `ImageGenerationTool` 与必需异步 saver 组合。与直接选择上游工具不同，完成生成会产生已保存引用，不只将图像留在模型响应中。该功能不另设输出替换 Capability、图像 API 客户端或回退模型。

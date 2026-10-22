@@ -138,7 +138,7 @@ export function BrowserSetup({
             {loading ? "Checking…" : "Check again"}
           </Button>
         </div>
-        <a href="/settings#browser">Configure browser and VNC</a>
+        <a href="/settings#browser">Configure browser</a>
       </div>
     </div>
   );

@@ -2958,10 +2958,6 @@ export interface components {
         BrowserAccess: {
             /** Ticket */
             ticket: string;
-            /** Control */
-            control: boolean;
-            /** Password */
-            password: string;
         };
         /** BrowserControl */
         BrowserControl: {
@@ -2979,7 +2975,7 @@ export interface components {
              * Source
              * @enum {string}
              */
-            source: "system" | "custom" | "playwright";
+            source: "system" | "custom";
         };
         /** BrowserInstallStep */
         BrowserInstallStep: {
@@ -2992,6 +2988,8 @@ export interface components {
         BrowserPlatform: "linux" | "macos" | "windows" | "other";
         /** @enum {string} */
         BrowserPreset: "desktop" | "laptop" | "wide" | "tablet" | "tablet-landscape" | "phone" | "phone-landscape";
+        /** @enum {string} */
+        BrowserRatio: "native" | "16:9" | "4:3" | "1:1" | "9:16";
         /** BrowserRequirement */
         BrowserRequirement: {
             /** Name */
@@ -3013,11 +3011,6 @@ export interface components {
              * @default []
              */
             browsers?: components["schemas"]["BrowserExecutable"][];
-            /**
-             * Vncs
-             * @default []
-             */
-            vncs?: components["schemas"]["VncExecutable"][];
         };
         /** BrowserSetup */
         BrowserSetup: {
@@ -3029,7 +3022,6 @@ export interface components {
             /** Ready */
             ready: boolean;
             browser?: components["schemas"]["BrowserExecutable"] | null;
-            vnc?: components["schemas"]["VncExecutable"] | null;
             /**
              * Requirements
              * @default []
@@ -3074,6 +3066,8 @@ export interface components {
             error?: string | null;
             /** @default desktop */
             viewport?: components["schemas"]["BrowserPreset"];
+            /** @default native */
+            aspect_ratio?: components["schemas"]["BrowserRatio"];
             /**
              * Viewports
              * @default [
@@ -3124,7 +3118,7 @@ export interface components {
             viewports?: components["schemas"]["BrowserViewport"][];
             /**
              * Resize Available
-             * @default false
+             * @default true
              */
             resize_available?: boolean;
         };
@@ -7272,31 +7266,6 @@ export interface components {
              */
             max_video_bytes?: number;
         };
-        /** VncExecutable */
-        VncExecutable: {
-            /** @default tigervnc */
-            kind?: components["schemas"]["VncKind"];
-            /** Path */
-            path: string;
-            /**
-             * Source
-             * @enum {string}
-             */
-            source: "system" | "custom";
-            /** Window Manager */
-            window_manager?: string | null;
-            /** Xrandr */
-            xrandr?: string | null;
-            /** Display Server */
-            display_server?: string | null;
-            /**
-             * Disable Resizing
-             * @default false
-             */
-            disable_resizing?: boolean;
-        };
-        /** @enum {string} */
-        VncKind: "tigervnc" | "x11vnc" | "wayvnc";
         /** VoiceSnapshot */
         VoiceSnapshot: {
             /**
@@ -8114,16 +8083,13 @@ export interface components {
              */
             control_token?: string;
             preset: components["schemas"]["BrowserPreset"];
+            /** @default native */
+            aspect_ratio?: components["schemas"]["BrowserRatio"];
         };
         /** BrowserAccessRequest */
         BrowserAccessRequest: {
             /** Session Id */
             session_id: string;
-            /**
-             * Control Token
-             * @default
-             */
-            control_token?: string;
         };
         /** TerminalCreate */
         TerminalCreate: {
